@@ -50,7 +50,7 @@ printf() 会将字符串中的内容原样打印到标准输出<br>
 ---
 <br>
 本题主要思路：<br>
-```printf("Hi guys! ") ```返回 9，一个非零值，相当于 true。由于 || 运算符的短路性，第二个printf不会被执行。
+`printf("Hi guys! ") `返回 9，一个非零值，相当于 true。由于 || 运算符的短路性，第二个printf不会被执行。
 
 if 语句的条件成立，程序进入 if 判断。
 
@@ -305,17 +305,33 @@ struct P* const ptr1：ptr1 是一个指向 struct P 的常量指针，即指针
 const struct P* ptr2：ptr2 是一个指向常量结构体的指针，即指针所指向的内容不可修改，不能通过 ptr2 修改结构体成员，但指针本身是可以改变的。<br>
 const struct P* const ptr3：ptr3 是一个常量指针，且指向的内容也是常量，即指针和指针所指向的内容都不能修改。
 
-ptr1->x = 100：    
+ptr1->x = 100：<br>
+ptr1 是 常量指针，指向的结构体内容是 可以修改的，合法。
 
-ptr1 是 常量指针，指向的结构体内容是 可以修改的（p1 的 x 不是 const），因此 合法。
 
-ptr2->x = 300：
+ptr2->x = 300：<br>
+ptr2 是 指向常量结构体的指针，意味着不能修改指向的结构体中的任何成员，非法。
 
-ptr2 是 指向常量结构体的指针，意味着你不能修改指向的结构体中的任何成员。所以，ptr2->x = 300 会尝试修改 p2.x，这是 非法 的。
+ptr3->x = 500：<br>
+ptr3 是 常量指针 且指向的结构体是 常量结构体，所以不能修改 ptr3 指向的结构体中的任何成员，非法。
 
-ptr3->x = 500：
+ptr1->y = 200：<br>
+ptr1 是常量指针指向 p1，但 p1 的 y 是 常量，非法。
 
-ptr3 是 常量指针 且指向的结构体是 常量结构体，所以不能修改 ptr3 指向的结构体中的任何成员。ptr3->x = 500 会尝试修改 p3.x，这也是 非法 的。
+ptr1 = &p2：<br>
+ptr1 是 常量指针，意味着指针的值不能改变，非法。
+
+ptr2->y = 400：<br>
+ptr2 是 指向常量结构体的指针，通过 ptr2 不能修改 y，y 是常量，非法。
+
+ptr2 = &p1：<br>
+ptr2 是 指向常量结构体的指针，可以指向 p1，p1 并没有被声明为常量，合法。
+
+ptr3->y = 600：<br>
+ptr3 是 常量指针，且指向的结构体是常量，非法。
+
+ptr3 = &p1：<br>
+ptr3 是 常量指针，指针本身不能改变指向，非法。
 
 ---
 
@@ -332,10 +348,43 @@ int main() {
     return 0;
 }
 ```
-
 说说这几个表达式的输出分别是什么？
 
 `a`, `*b`, `*b + 1`, `b`, `b + 1`, `* (*b + 1)`, `c`, `sizeof(a)`, `sizeof(b)`, `sizeof(&a)`, `sizeof(f1)`
+
+## 题解
+
+本题主要考察C语言的表达式，主要包括指针、数组和函数指针等。
+
+---
+<br>
+本题主要思路：<br>
+a 是一个 整数数组，其类型是 int[3]。在 C 中，数组名 a 表示数组的 首元素的地址，即 &a[0]。
+
+<br>a 输出的是数组 a 的首地址，即 &a[0]。
+
+b 是一个指向整个数组 a 的指针；<br> b + 1 是指向 数组 a 后面的位置，即指向 a 后面的一个 int[3] 类型的空间；<br> *b 表示解引用该指针，得到数组 a 本身；<br> *b + 1 表示数组 a 从第一个元素开始，偏移一个位置，指向 a[1]。<br> *(*b + 1) 是对 a[1] 的解引用，即取 a[1] 的值。<br>
+
+*b 输出的值和 a 的输出一样，即 a的首地址，&a[0]。<br> *b + 1 输出的是数组a的第二个元素的地址，即 &a[1]。<br> b 输出的是 a 的地址，即 &a，这与 a的首地址是相同的。<br> b+1 输出的是指向下一个 int[3] 数组位置的地址，即 b 之后的内存位置: &a + sizeof(a)。<br> *(*b + 1) 输出的是 a[1]，即 4。<br>
+
+c 是一个 指针数组，里面包含3个 int* 类型元素，每一个都指向 a 内的元素
+ 
+c 输出的是 c 数组的首地址，即&c[0]，指向 a 数组的指针数组。
+
+sizeof运算符计算所占字节数。<br>
+a 是整数数组。<br>
+b 是指针数组，所占字节数为8。<br>
+&a 类型是 int (*)[3]，即指向包含 3 个整数的数组的指针。
+
+sizeof(a) 输出a数组所占的全部字节数，即 3 * sizeof(int) = 3 * 4 = 12。
+sizeof(b) 输出指针数组所占的字节数， 即 8 字节。
+sizeof(&a) 输出的是指针 &a 的大小，也就是指针 b 的大小， 即 8 字节。
+
+f1 是一个函数指针的声明，表示 f1 是一个函数，接受一个 int 参数，并返回一个指向接受 int* 和 int 参数的函数的指针，返回值类型是 int。
+
+sizeof(f1) 输出的是 f1 函数指针的大小。函数指针的大小为 8 字节。
+
+---
 
 ## 8. 全局还是局部！！！
 
@@ -361,6 +410,25 @@ int main() {
 }
 ```
 
+## 题解
+
+本题主要考察局部变量、全局变量和静态变量。
+
+全局变量：在函数外定义，初始值默认为0，全局变量在函数中不能直接赋值，但可以通过重新定义改变值。作用域为整个程序，定义域从定义处到程序结束。<br>
+局部变量：在函数或代码块内定义，作用域为所在函数或代码块区间，定义域为所在函数调用区间。<br>
+静态变量：只在程序开始时初始化一次，后续不再初始化，保持程序运行的值。
+
+---
+
+本题主要思路：<br>
+进入 main 函数， g = g + 3， 即 g = 3。<br>
+从`arr[1] = func()`开始，调用 funs 函数。<br>
+在 funs 函数中，首先定义一个静态变量(`static int j = 98`) j = 98，j = j + g，即j = 98 + 3 = 101，所以返回 j = 101 ，arr[1] 取 101 对应的 ACSII 值，为`e`。<br>
+同理，arr[0]、 arr[2]、 arr[3]、 arr[4]分别对应 `h` `l` `l` `o`。<br>
+最后输出`hello linux`。
+
+---
+
 ## 9. 宏函数指针
 
 观察程序结果，说说程序运行的过程：
@@ -368,7 +436,7 @@ int main() {
 ```c
 #define CALL_MAIN(main, x) (*(int (*)(int))*main)(x);
 #define DOUBLE(x) 2 * x
-int (*registry[1])(int);
+*registry = (int(*)(int))main;
 int main(int argc) {
     if (argc > 2e3) return 0;
     printf("%d ", argc + 1);
@@ -377,6 +445,39 @@ int main(int argc) {
     return 0;
 }
 ```
+
+## 题解
+
+本题主要考察宏函数指针和递归。
+
+---
+<br>
+本题主要思路：<br>
+
+对于宏` #define DOUBLE(x) 2 * x ` 在 main 函数中调用时，运行 2*argc + 1 ，如果要实现 2*(argc + 1) ，则将该宏改为` #define DOUBLE(x) 2 * (x) `。
+
+对于 ` (*(int (*)(int))*main)(x) `:<br>
+` (int(*)(int)) ` 表示函数指针类型，接收int并返回int。<br>
+` *main `: 解引用main指针， main 在这里被当作指针传递。<br>
+
+` *registry = (int(*)(int))main ` 声明一个大小为1的函数指针数组， 每个元素都是指向 int func(int) 类型函数的指针。
+
+` *registry = (int(*)(int))main `: 将 main 函数地址存入 registry 数组。
+
+程序运行：<br>
+第一次调用` main(1) `：<br>
+argc = 1 ， 第一行输出 2 (1 + 1)。<br>
+`CALL_MAIN `调用宏` DOUBLE(x) `运行 2 * 1 + 1 ，得到3 ， 相当于调用 `registry[0](3) `， 即` main(3) `。<br> 
+
+第二次调用` main(3) `：<br>
+argc = 3 ， 第一行输出 4 (3 + 1)。<br>
+`CALL_MAIN `调用宏` DOUBLE(x) `运行 2 * 3 + 1 ，得到7 ， 相当于调用 `registry[0](7) `， 即` main(7) `。<br> 
+
+即 1 3 7 15 31 63 127 255 511 1023 2047 ，当` argc > 2000 `跳出该递归。
+
+最后程序输出 2 4 8 16 32 64 128 256 512 1024 2048。
+
+---
 
 ## 10. 拼接 排序 去重
 
@@ -400,6 +501,65 @@ int main() {
     return 0;
 }
 ```
+## 题解
+
+```c
+struct result {    // 定义结果结构体
+    int *arr;
+    int len;
+};
+
+int compare(const void *a, const void *b) {     // 比较函数
+    return (*(int*)a - *(int*)b);
+}
+
+void your_concat(int arr1[], int len1, int arr2[], int len2, struct result *res) {    // 拼接函数
+    int total_len = len1 + len2;
+    res->arr = (int*)malloc(total_len * sizeof(int));
+    res->len = total_len;
+    
+    for (int i = 0; i < len1; i++) {
+        res->arr[i] = arr1[i];
+    }
+
+    for (int i = 0; i < len2; i++) {
+        res->arr[len1 + i] = arr2[i];
+    }
+}
+
+void your_sort(struct result *res) {      // 排序函数
+    qsort(res->arr, res->len, sizeof(int), compare);
+}
+
+void your_dedup(struct result *res) {      // 去重函数
+    if (res->len == 0) return;
+    
+    int unique_index = 0;      // 双指针去重
+    for (int i = 1; i < res->len; i++) {
+        if (res->arr[i] != res->arr[unique_index]) {
+            unique_index++;
+            res->arr[unique_index] = res->arr[i];
+        }
+    }
+    
+    res->len = unique_index + 1;     // 更新长度
+    
+    int *new_arr = (int*)malloc(res->len * sizeof(int));    // 重新分配内存
+    for (int i = 0; i < res->len; i++) {
+        new_arr[i] = res->arr[i];
+    }
+    free(res->arr);
+    res->arr = new_arr;
+}
+
+void print_result(struct result res) {       // 打印结果函数
+    for (int i = 0; i < res.len; i++) {
+        printf("%d ", res.arr[i]);
+    }
+    printf("\n");
+}
+```
+---
 
 ## 11. 指针魔法
 
@@ -422,6 +582,19 @@ int main() {
     return 0;
 }
 ```
+
+## 题解
+
+本题主要考察指针相关知识。
+
+---
+<br>
+本题主要思路：<br>
+
+` int(*pa)[6] ` pa是指向整个数组的指针， ` (*pa) ` 相当于 ` a[i] `。<br>
+` int** p ` 是指针的指针
+
+---
 
 ## 12. 奇怪的循环
 
@@ -462,6 +635,17 @@ int main() {
 }
 ```
 
+## 题解
+
+本题主要考察
+
+---
+<br>
+本题主要思路：<br>
+
+
+---
+
 ## 13. GNU/Linux (选做)
 
 注：嘿！你或许对 Linux 命令不是很熟悉，甚至你没听说过 Linux。但别担心，这是选做题，了解 Linux 是加分项，但不了解也不扣分哦！
@@ -469,6 +653,14 @@ int main() {
 1. 你知道 `cd` 命令的用法与 `/` `~` `-` 这些符号的含义吗？
 2. 你知道 Linux 系统如何创建和删除一个目录吗？
 3. 请问你还懂得哪些与 GNU/Linux 相关的知识呢？
+
+## 题解
+
+1、`cd` ：切换目录；`/` ：根目录； `~` ：家目录 ； `-` ：表示选项、标准输入输出、当前目录或父目录，也可以做分割符。<br>
+除此之外`.` ：当前目录； `..` ：上级目录。<br>
+2、创建目录：`mkdir` ； 删除空目录：`rmdir` ； 删除非空目录：`rm -r` 。<br>
+3、GNU项目是一个完全自由的操作系统，提供新新许多基础工具和软件包。<br>
+Linux是操作系统的内核，负责管理计算机硬件资源，并提供与硬件的接口。
 
 ---
 
