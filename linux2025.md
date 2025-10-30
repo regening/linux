@@ -585,14 +585,65 @@ int main() {
 
 ## 题解
 
-本题主要考察指针相关知识。
+本题主要考察指针相关知识。<br>
+& 1 是一个用来检查整数的最低有效位（奇偶性）的技巧。<br>
+p - a = 指针偏移量。
 
 ---
 <br>
 本题主要思路：<br>
 
 ` int(*pa)[6] ` pa是指向整个数组的指针， ` (*pa) ` 相当于 ` a[i] `。<br>
-` int** p ` 是指针的指针
+` int** p ` 是指针的指针，` *pp `得到 p 的值，即指向的地址，
+` **pp `得到 p 指向的值。
+
+#### 程序分析：<br>
+初始：
+```c
+int a[6] = { 2, 4, 6, 8, 10, 12 };
+int* p = a + 1;     // p 指向 a[1] 
+int** pp = &p;      // pp 指向指针p
+```
+ a = { 2, 4, 6, 8, 10, 12 }， p 指向 a[1] 。
+
+#### 进入 magic 函数：<br>
+```c
+**pp = **pp + (*pa)[2]
+     = *p + a[2] 
+     = 4 + 6 = 10
+```
+ a = { 2, 10, 6, 8, 10, 12 }， p 仍指向 a[1] 。<br>
+ `*pp = a + 5 ` ，即让 p 指向a[5] 。
+
+```c
+**pp = **pp - (*pa)[0]
+     = *p - a[0]
+     = 12 - 2 = 10
+```
+ a = { 2, 10, 6, 8, 10, 10 }， p 仍指向 a[5] = 10 。<br>
+```c
+*(*pa + 3) = *(a + 3) = a[3] = 8
+8 & 1 = 0 ，选择 : 后面的 1
+*pp = a + 1  // 让p指向a[1]
+```
+ a = { 2, 10, 6, 8, 10, 10 }， p 指向 a[1] = 10 。<br>
+```c
+*(*pp) = *p = a[1]
+*(*pp - 1) = *(p - 1) = a[0] = 2
+a[1] = a[1] + a[0] = 10 + 2 = 12
+```
+ a = { 2, 12, 6, 8, 10, 10 }， p 指向 a[1] = 12 。<br>
+` *pp = a + 2 ` ，让p指向a[2] 。<br>
+ a = {2, 12, 6, 8, 10, 10} ，p 指向 a[2] = 6 。
+
+#### 输出：
+*p = a[2] = 6<br>
+ **pp = *p = 6 (pp指向p) <br>
+ a[1] = 12 <br>
+ a[2] = 6 <br>
+ a[3] = 8 <br>
+ a[5] = 10 <br>
+ p - a = 2 (p指向a[2])
 
 ---
 
@@ -637,12 +688,111 @@ int main() {
 
 ## 题解
 
-本题主要考察
+本题主要考察结构体，联合体， 柔性数组。 <br>
+柔性数组：<br>
+char string[0] ， 不占结构体空间，允许动态扩展。<br>
+要求：必须是结构体最后一个成员； 分配内存时计算总需求：sizeof(Node) + 字符串长度 + 1。<br>
+联合体内存布局：
+```c
+union data {
+    void**** p;   // 任何指针类型都占用相同空间
+    char arr[20]; // 共享同一块内存
+};
+```
+联合体所有成员共享内存，大小为最大成员的大小。
 
 ---
 <br>
 本题主要思路：<br>
 
+```c
+union data {
+    void**** p;    // 4级指针，占用空间
+    char arr[20];  // 20字节字符数组
+};                 // union为20字节（取最大成员）
+
+typedef struct node {
+    int a;                    // 4字节
+    union data b;             // 20字节  
+    void (*use)(struct node* n); // 函数指针，8字节
+    char string[0];           // 柔性数组，不占空间
+} Node;
+```
+结构体大小计算（8字节对齐）：
+
+ int a：4字节（对齐到8字节）<br>
+ union data b：20字节（对齐到24字节） <br>
+ void (*use)：8字节（对齐到32字节） <br>
+ char string[0]：0字节  <br>
+ 总大小：32字节
+```c
+void func1(Node* node) {
+    node->use = func2;        // 下次调用func2
+    printf("%s\n", node->string);  // 打印字符串
+}
+
+void func2(Node* node) {
+    node->use = func1;        // 下次调用func1  
+    printf("%d\n", ++(node->a));   // 打印并递增a
+}
+```
+
+创建了一个函数交替调用的模式：
+
+```
+func1 → func2 → func1 → func2 → ...
+```
+```c
+const char* s = "Your journey begins here!";
+Node* P = (Node*)malloc(sizeof(Node) + (strlen(s) + 1) * sizeof(char));
+strcpy(P->string, s);        // 复制字符串到柔性数组
+P->use = func1;              // 初始函数指针指向func1
+P->a = sizeof(Node) * 50 + sizeof(union data);
+sizeof(Node) = 32
+sizeof(union data) = 20
+P->a = 32 * 50 + 20 = 1600 + 20 = 1620
+```
+开始循环：<br>
+第1次：调用 func1(P) <br>
+P->use 从 func1 改为 func2 <br>
+输出："Your journey begins here!" <br>
+P->a 保持 1620
+
+第2次：调用 func2(P) <br>
+P->use 从 func2 改为 func1 <br>
+P->a 从 1620 增加到 1621 <br>
+输出：1621 
+
+第3次：调用 func1(P) <br>
+P->use 从 func1 改为 func2 <br>
+输出："Your journey begins here!" <br>
+P->a 保持 1621 
+
+第4次：调用 func2(P) <br>
+P->use 从 func2 改为 func1 <br>
+P->a 从 1621 增加到 1622 <br>
+输出：1622 
+
+循环继续直到 P->a >= 2028：<br>
+初始值：1620 <br>
+每次 func2 调用时 a 增加1 <br>
+func1 调用时 a 不变 
+
+需要增加的次数：2028 - 1620 = 408，<br>
+但每2次循环中只有1次增加a，所以需要：408 * 2 = 816 次循环。
+
+输出：
+```
+Your journey begins here!
+1621
+Your journey begins here! 
+1622
+Your journey begins here!
+1623
+...
+Your journey begins here!
+2027
+```
 
 ---
 
