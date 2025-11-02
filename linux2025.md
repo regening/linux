@@ -730,9 +730,9 @@ typedef struct node {
 
 结构体大小计算（8字节对齐）：
 
- int a：4字节，占用偏移量0-3<br>
- union data b：20字节，占用偏移量4-23 <br>
- void (*use)：8字节，占用偏移量24-31 <br>
+ int a：4字节，占用1-4,和8对齐<br>
+ union data b：20字节，占用8-28，和32对齐 <br>
+ void (*use)：8字节，占用32-40 <br>
  char string[0]：不占空间  <br>
  总大小40是8的倍数，不需要额外填充。<br>
  总大小：40字节。
