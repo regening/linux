@@ -436,7 +436,7 @@ int main() {
 ```c
 #define CALL_MAIN(main, x) (*(int (*)(int))*main)(x);
 #define DOUBLE(x) 2 * x
-*registry = (int(*)(int))main;
+int (*registry[1])(int);
 int main(int argc) {
     if (argc > 2e3) return 0;
     printf("%d ", argc + 1);
@@ -707,8 +707,8 @@ union data {
 
 ```c
 union data {
-    void**** p;    // 4级指针，占用空间
-    char arr[20];  // 20字节字符数组
+    void**** p;    // 4级指针 8字节
+    char arr[20];  // 字符数组 20字节
 };                 // union为20字节（取最大成员）
 
 typedef struct node {
@@ -721,10 +721,11 @@ typedef struct node {
 结构体大小计算（8字节对齐）：
 
  int a：4字节（对齐到8字节）<br>
- union data b：20字节（对齐到24字节） <br>
- void (*use)：8字节（对齐到32字节） <br>
+ union data b：20字节（对齐到28字节） <br>
+ void (*use)：8字节（对齐到36字节） <br>
  char string[0]：0字节  <br>
- 总大小：32字节
+ 结构体结尾整体补4字节，让总大小变成8的倍数。<br>
+ 总大小：40字节。
 ```c
 void func1(Node* node) {
     node->use = func2;        // 下次调用func2
