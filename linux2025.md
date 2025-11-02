@@ -707,7 +707,7 @@ union data {
 结构体的总大小是最大对齐要求的倍数。<br>
 可能需要填充字节来保证对齐。<br>
 联合体内存对齐规则:<br>
-联合体总大小是其最大成员大小的倍数。<br>
+联合体总大小是其最大基础成员大小的倍数。<br>
 所有成员共享同一块内存，不需要填充字节，除非最大成员需要更高的对齐。
 
 ---
@@ -718,15 +718,16 @@ union data {
 union data {
     void**** p;    // 4级指针 8字节
     char arr[20];  // 字符数组 20字节
-};                 // union为20字节（取最大成员）
+};                 // union为24字节（取最大成员，且为8的整数倍）
 
 typedef struct node {
     int a;                    // 4字节
-    union data b;             // 20字节  
+    union data b;             // 24字节  
     void (*use)(struct node* n); // 函数指针，8字节
     char string[0];           // 柔性数组，不占空间
 } Node;
 ```
+
 结构体大小计算（8字节对齐）：
 
  int a：4字节，占用偏移量0-3<br>
@@ -758,50 +759,51 @@ Node* P = (Node*)malloc(sizeof(Node) + (strlen(s) + 1) * sizeof(char));
 strcpy(P->string, s);        // 复制字符串到柔性数组
 P->use = func1;              // 初始函数指针指向func1
 P->a = sizeof(Node) * 50 + sizeof(union data);
-sizeof(Node) = 32
-sizeof(union data) = 20
-P->a = 32 * 50 + 20 = 1600 + 20 = 1620
+sizeof(Node) = 40
+sizeof(union data) = 24
+P->a = 40 * 50 + 24 = 2000 + 24 = 2024
 ```
 开始循环：<br>
 第1次：调用 func1(P) <br>
 P->use 从 func1 改为 func2 <br>
 输出："Your journey begins here!" <br>
-P->a 保持 1620
+P->a 保持 2024
 
 第2次：调用 func2(P) <br>
 P->use 从 func2 改为 func1 <br>
-P->a 从 1620 增加到 1621 <br>
-输出：1621 
+P->a 从 2024 增加到 2025 <br>
+输出：2025
 
 第3次：调用 func1(P) <br>
 P->use 从 func1 改为 func2 <br>
 输出："Your journey begins here!" <br>
-P->a 保持 1621 
+P->a 保持 2025
 
 第4次：调用 func2(P) <br>
 P->use 从 func2 改为 func1 <br>
-P->a 从 1621 增加到 1622 <br>
-输出：1622 
+P->a 从 2025 增加到 2026 <br>
+输出：2026
 
 循环继续直到 P->a >= 2028：<br>
-初始值：1620 <br>
+初始值：2024 <br>
 每次 func2 调用时 a 增加1 <br>
 func1 调用时 a 不变 
 
-需要增加的次数：2028 - 1620 = 408，<br>
-但每2次循环中只有1次增加a，所以需要：408 * 2 = 816 次循环。
+需要增加的次数：2028 - 2024 = 4，<br>
+但每2次循环中只有1次增加a，所以需要：4 * 2 = 8 次循环。
 
 输出：
 ```
 Your journey begins here!
-1621
+2024
 Your journey begins here! 
-1622
+2025
 Your journey begins here!
-1623
-...
+2026
 Your journey begins here!
 2027
+Your journey begins here!
+2028
 ```
 
 ---
