@@ -620,11 +620,11 @@ int main() {
 本题主要考察
 char string[0] 的含义与使用
 
-char string[0] 是 GNU 扩展（zero-length array）。现代标准 C（C99）里推荐使用 char string[];（灵活数组成员，flexible array member）。两者用途相同：作为结构体尾部附加可变长度数据的占位符，不占据 sizeof 的空间。
+char string[0] 是 GNU 扩展：作为结构体尾部附加可变长度数据的占位符，不占据 sizeof 的空间。
 
 因为 string 不占空间，所以 sizeof(Node) 不包含字符串所需的额外字节。程序中通过 malloc(sizeof(Node) + (strlen(s) + 1) * sizeof(char)) 分配了结构体本体加上字符串所需的空间。
 
-P->string 的地址就是紧接在结构体实际成员后面的内存，strcpy 可以把字符串拷进去，这是常用的“struct with trailing data”技巧。
+P->string 的地址就是紧接在结构体实际成员后面的内存，strcpy 可以把字符串拷进去。
 
 ---
 <br>
