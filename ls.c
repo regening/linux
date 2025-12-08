@@ -26,9 +26,6 @@ void list_all(const char *path, int show_all) {
 
  
 
-
-
-
 int main(int argc, char *argv[]) {
     int show_all = 0;
 
