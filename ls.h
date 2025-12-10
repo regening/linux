@@ -1,6 +1,6 @@
 #ifndef LS_H
 #define LS_H
 
-void list_all(); 
+void list_a(); 
 
 #endif

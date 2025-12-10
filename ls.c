@@ -3,7 +3,7 @@
 #include <stdlib.h>     
 #include <string.h>     
 
-void list_all(const char *path, int show){  ///-a
+void list_a(const char *path, int show){  //-a
     struct dirent *entry;
     DIR *dp = opendir(path);  
     if(dp == NULL){
@@ -17,3 +17,5 @@ void list_all(const char *path, int show){  ///-a
     }
     closedir(dp); 
 }
+
+void list_i
