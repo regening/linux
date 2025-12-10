@@ -1,6 +1,6 @@
 # 头文件
 ```c
-#include <dirent.h>     // 操作目录
+#include   <dirent.h>     // 操作目录
 #include <stdio.h>      // 标准输入输出函数
 #include <stdlib.h>     // 标准库函数 处理一些基本操作
 #include <string.h>     // 字符串操作函数
