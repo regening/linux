@@ -6,8 +6,8 @@
 void sort_and_list(const char *path, int show_long, int show_hidden, int show_recursive, int reverse, int show_inode, int show_size);
 
 int main(int argc, char *argv[]) {
-    int list_l = 0;
     int list_a = 0;
+    int list_l = 0;
     int list_R = 0;
     int list_r = 0;
     int list_i = 0;
@@ -26,8 +26,6 @@ int main(int argc, char *argv[]) {
             case 'R':
                 list_R = 1;
                 break;
-            case 't':   // 可以添加排序功能
-                break;
             case 'r':
                 list_r = 1;
                 break;
@@ -37,8 +35,10 @@ int main(int argc, char *argv[]) {
             case 's':
                 list_s = 1;
                 break;
+            case 't':   // 可以添加排序功能
+                break;
             default:
-                fprintf(stderr, "Usage: %s [-a] [-l] [-R] [-r] [-t] [-s] [-i] [path]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-a] [-l] [-R] [-r] [-i] [-s] [-t] [path]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
