@@ -1,16 +1,47 @@
-#include <stdio.h>      
-#include <stdlib.h>     
-#include <string.h>   
-#include "ls.h"  
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include "ls.c"  // 引入ls.c中的函数
 
-void list_a(const char *path, int show); 
+void sort_and_list(const char *path, int show_long, int show_hidden, int show_recursive, int reverse, int show_inode, int show_size);
 
 int main(int argc, char *argv[]) {
-    int show = 0;
-    if(argc > 1 && strcmp(argv[1], "-a") == 0){
-        show = 1;
+    int list_l = 0;
+    int list_a = 0;
+    int list_R = 0;
+    int list_r = 0;
+    int list_i = 0;
+    int list_s = 0;
+    char *path = ".";  // 默认路径是当前目录
+
+    int option;
+    while ((option = getopt(argc, argv, "alRtrsi")) != -1) {
+        switch (option) {
+            case 'a':
+                list_a = 1;
+                break;
+            case 'l':
+                list_l = 1;
+                break;
+            case 'R':
+                list_R = 1;
+                break;
+            case 't':   // 可以添加排序功能
+                break;
+            case 'r':
+                list_r = 1;
+                break;
+            case 'i':
+                list_i = 1;
+                break;
+            case 's':
+                list_s = 1;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-a] [-l] [-R] [-r] [-t] [-s] [-i] [path]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
     }
-    list_a(".", show); 
-    
+
     return 0;
 }
