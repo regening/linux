@@ -17,6 +17,8 @@ int main(int argc, char *argv[]) {
     int option;
     while ((option = getopt(argc, argv, "alRtrsi")) != -1) {
         switch (option) {
+
+            
             case 'a':
                 list_a = 1;
                 break;
