@@ -154,7 +154,7 @@ int main() {
             continue;
         }
 
-        // ---------------- 普通命令 ----------------
+        // 普通命令 
         pid_t pid = fork();
         if (pid == 0) {
             signal(SIGINT, SIG_DFL); // 子进程恢复 Ctrl+C
