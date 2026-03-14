@@ -11,12 +11,11 @@
 #define MAX_ARG 64
 #define MAX_PATH 1024
 
-void abc (char *str) { // 去除字符串末尾的换行符
+void abc (char *str) {                   // 去除换行符
     str[strcspn(str, "\n")] = 0;
-    // fgets的输入会保留换行符
 }
 
-void bcd (char *cmd, char **argv) { // 将命令字符串解析成参数数组
+void bcd (char *cmd, char **argv) {      // 解析命令字符串
     int i = 0;
     argv[i] = strtok(cmd, " \t");
     while (argv[i] != NULL && i < MAX_ARG - 1) {
@@ -26,8 +25,7 @@ void bcd (char *cmd, char **argv) { // 将命令字符串解析成参数数组
     argv[i] = NULL;
 }
 
-int check_bg (char **argv) {
-	// 检查命令是否需要在后台运行 
+int check_bg (char **argv) {              // 检查是否后台
     int i = 0;
     while (argv[i] != NULL) i++;
     if (i > 0 && strcmp(argv[i-1], "&") == 0) {
@@ -37,12 +35,10 @@ int check_bg (char **argv) {
     return 0;
 }
 
-int lmn(char **argv) {
-	// 处理命令中的输入/输出重定向操作符 
+int lmn(char **argv) {                     // 处理重定向
     int i = 0;
     while (argv[i] != NULL) {
-        if (strcmp(argv[i], ">") == 0 || strcmp(argv[i], ">>") == 0) {
-        	// 输出重定向 || 追加输出重定向 
+        if (strcmp(argv[i], ">") == 0 || strcmp(argv[i], ">>") == 0) { // 输出
             int append = (strcmp(argv[i], ">>") == 0);
             char *filename = argv[i+1];
             if (!filename) { perror("No file specified"); return -1; }
@@ -52,8 +48,7 @@ int lmn(char **argv) {
             close(fd);
             argv[i] = NULL;
         }
-        if (strcmp(argv[i], "<") == 0) {
-        	// 输入重定向 
+        if (strcmp(argv[i], "<") == 0) { // 输入
             char *filename = argv[i+1];
             if (!filename) { perror("No file specified"); return -1; }
             int fd = open(filename, O_RDONLY);
@@ -69,31 +64,30 @@ int lmn(char **argv) {
 
 int main() {
 
-    char cmd[MAX_CMD]; // 存储用户输入的命令字符串
-    char *argv[MAX_ARG]; // 存储解析后的命令参数数组
-    char pre[MAX_PATH] = ""; // 保存上一个工作目录 用于 cd-
+    char cmd[MAX_CMD];
+    char *argv[MAX_ARG];
+    char pre[MAX_PATH] = {0}; 
 
-    signal(SIGINT, SIG_IGN); // 屏蔽 shell 自身 ctrl+c， 只有前台子进程退出
+    signal(SIGINT, SIG_IGN); 
     
 
     while (1) {
         // 打印提示符 
         char cwd[MAX_PATH];
-        getcwd(cwd, sizeof(cwd)); // 获取当前工作目录 
-        char *username = getpwuid(getuid())->pw_name; // 获取用户名 
+        getcwd(cwd, sizeof(cwd)); 
+        char *username = getpwuid(getuid())->pw_name; 
         char hostname[64];
-        gethostname(hostname, sizeof(hostname)); // 获取主机名 
+        gethostname(hostname, sizeof(hostname));  
         printf("\033[1;32m%s@%s\033[0m:\033[1;34m%s\033[0m$ ", username, hostname, cwd);
-        // 绿色用户主机名，蓝色当前路径 
-		fflush(stdout); // 确保提示符立即显示 
+		fflush(stdout); 
 
         // 读取命令
         if (fgets(cmd, sizeof(cmd), stdin) == NULL) {
             printf("\n");
-            break; // ctrl+d 退出 
+            break; 
         }
-        abc(cmd); // 去除换行符 
-        if (cmd[0] == '\0') continue; // 空命令继续循环 
+        abc(cmd);
+        if (cmd[0] == '\0') continue; 
 
         // 内置命令 exit
         if (strcmp(cmd, "exit") == 0) break;
@@ -119,14 +113,14 @@ int main() {
         int background = check_bg(argv);
 
         // 处理管道 
-        int pipe_pos = -1;
-        for (int i = 0; argv[i]; i++) if (strcmp(argv[i], "|") == 0) pipe_pos = i;
+        int upipe = -1;
+        for (int i = 0; argv[i]; i++) if (strcmp(argv[i], "|") == 0) upipe = i;
 
-        if (pipe_pos != -1) {
+        if (upipe != -1) {
             // 分割命令
-            argv[pipe_pos] = NULL;
+            argv[upipe] = NULL;
             char **argv1 = argv;
-            char **argv2 = argv + pipe_pos + 1;
+            char **argv2 = argv + upipe + 1;
 
             int fd[2];
             if (pipe(fd) < 0) { perror("pipe failed"); continue; }
@@ -154,10 +148,10 @@ int main() {
             continue;
         }
 
-        // ---------------- 普通命令 ----------------
+        // 命令 
         pid_t pid = fork();
         if (pid == 0) {
-            signal(SIGINT, SIG_DFL); // 子进程恢复 Ctrl+C
+            signal(SIGINT, SIG_DFL); 
             if (lmn(argv) < 0) exit(1);
             execvp(argv[0], argv);
             perror("exec failed");
