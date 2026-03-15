@@ -8,14 +8,22 @@
 #include <signal.h>
 
 #define MAX_CMD 1024
-#define MAX_ARG 64
-#define MAX_PATH 1024
+#define MAX_ARG 128
+ 
+char prev_dir[1024];                        // 保存上一次目录
 
-void abc (char *str) {                   // 去除换行符
-    str[strcspn(str, "\n")] = 0;
+char* ini(char* str) {                      // 初始处理：去掉字符串两端空白
+    while(*str == ' ' || *str == '\t') str++;
+    if(*str == 0) return str;
+    char* end = str + strlen(str) - 1;
+    while(end > str && (*end == ' ' || *end == '\t' || *end == '\n')) {
+        *end = 0;
+        end--;
+    }
+    return str;
 }
 
-void bcd (char *cmd, char **argv) {      // 解析命令字符串
+void bcd (char *cmd, char **argv) {        // 解析命令字符串
     int i = 0;
     argv[i] = strtok(cmd, " \t");
     while (argv[i] != NULL && i < MAX_ARG - 1) {
@@ -25,142 +33,107 @@ void bcd (char *cmd, char **argv) {      // 解析命令字符串
     argv[i] = NULL;
 }
 
-int check_bg (char **argv) {              // 检查是否后台
-    int i = 0;
-    while (argv[i] != NULL) i++;
-    if (i > 0 && strcmp(argv[i-1], "&") == 0) {
-        argv[i-1] = NULL;
-        return 1;
+void redir(char** params) {                // 处理重定向
+    int fd_in = -1, fd_out = -1, append_mode = 0;
+    for(int i=0; params[i]; i++) {
+        if(strcmp(params[i], ">") == 0 || strcmp(params[i], ">>") == 0) {
+            append_mode = (strcmp(params[i], ">>") == 0);
+            fd_out = open(params[i+1], append_mode ? O_WRONLY|O_CREAT|O_APPEND : O_WRONLY|O_CREAT|O_TRUNC, 0644);
+            if(fd_out < 0) { perror("open"); return; }
+            params[i] = NULL;
+        }
+        else if(strcmp(params[i], "<") == 0) {
+            fd_in = open(params[i+1], O_RDONLY);
+            if(fd_in < 0) { perror("open"); return; }
+            params[i] = NULL;
+        }
     }
-    return 0;
+
+    pid_t pid = fork();
+    if(pid == 0) {
+        if(fd_in != -1) { dup2(fd_in, STDIN_FILENO); close(fd_in); }
+        if(fd_out != -1) { dup2(fd_out, STDOUT_FILENO); close(fd_out); }
+        execvp(params[0], params);
+        perror("execvp failed");
+        exit(1);
+    } else {
+        waitpid(pid, NULL, 0);
+        if(fd_in != -1) close(fd_in);
+        if(fd_out != -1) close(fd_out);
+    }
 }
 
-int lmn(char **argv) {                     // 处理重定向
-    int i = 0;
-    while (argv[i] != NULL) {
-        if (strcmp(argv[i], ">") == 0 || strcmp(argv[i], ">>") == 0) { // 输出
-            int append = (strcmp(argv[i], ">>") == 0);
-            char *filename = argv[i+1];
-            if (!filename) { perror("No file specified"); return -1; }
-            int fd = open(filename, O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC), 0644);
-            if (fd < 0) { perror("open failed"); return -1; }
-            dup2(fd, STDOUT_FILENO);
-            close(fd);
-            argv[i] = NULL;
-        }
-        if (strcmp(argv[i], "<") == 0) { // 输入
-            char *filename = argv[i+1];
-            if (!filename) { perror("No file specified"); return -1; }
-            int fd = open(filename, O_RDONLY);
-            if (fd < 0) { perror("open failed"); return -1; }
-            dup2(fd, STDIN_FILENO);
-            close(fd);
-            argv[i] = NULL;
-        }
-        i++;
+void run_pipe(char* line) {                 // 管道处理
+    char* cmds[128];
+    int count = 0;
+    char* token = strtok(line, "|");
+    while(token != NULL) {
+        cmds[count++] = ini(token);
+        token = strtok(NULL, "|");
     }
-    return 0;
+
+    int input_fd = 0;
+    for(int i=0; i<count; i++) {
+        int pipe_fd[2];
+        if(i < count-1) pipe(pipe_fd);
+
+        char* params[MAX_ARG];
+        bcd(cmds[i], params);
+
+        pid_t pid = fork();
+        if(pid == 0) {
+            if(input_fd != 0) { dup2(input_fd, STDIN_FILENO); close(input_fd); }
+            if(i < count-1) { dup2(pipe_fd[1], STDOUT_FILENO); close(pipe_fd[0]); close(pipe_fd[1]); }
+            redir(params);
+            exit(0);
+        } else {
+            waitpid(pid, NULL, 0);
+            if(input_fd != 0) close(input_fd);
+            if(i < count-1) { close(pipe_fd[1]); input_fd = pipe_fd[0]; }
+        }
+    }
 }
 
 int main() {
+    char cmd_line[MAX_CMD];
+    char cwd[1024];
+    getcwd(prev_dir, sizeof(prev_dir));
 
-    char cmd[MAX_CMD];
-    char *argv[MAX_ARG];
-    char pre[MAX_PATH] = {0}; 
+    while(1) {
+        getcwd(cwd, sizeof(cwd));
 
-    signal(SIGINT, SIG_IGN); 
-    
-
-    while (1) {
-        // 打印提示符 
-        char cwd[MAX_PATH];
-        getcwd(cwd, sizeof(cwd)); 
-        char *username = getpwuid(getuid())->pw_name; 
+        char *user = getpwuid(getuid())->pw_name;
         char hostname[64];
-        gethostname(hostname, sizeof(hostname));  
-        printf("\033[1;32m%s@%s\033[0m:\033[1;34m%s\033[0m$ ", username, hostname, cwd);
-		fflush(stdout); 
+        gethostname(hostname, sizeof(hostname));
+        printf("\033[1;32m%s\033[0m@\033[1;32m%s\033[0m:\033[1;34m%s\033[0m$ ", user, hostname, cwd);
+        fflush(stdout);
 
-        // 读取命令
-        if (fgets(cmd, sizeof(cmd), stdin) == NULL) {
-            printf("\n");
-            break; 
-        }
-        abc(cmd);
-        if (cmd[0] == '\0') continue; 
+        if(!fgets(cmd_line, sizeof(cmd_line), stdin)) break;
+        char* cmd = ini(cmd_line);
+        if(strlen(cmd) == 0) continue;
 
-        // 内置命令 exit
-        if (strcmp(cmd, "exit") == 0) break;
-
-        // 解析命令
-        bcd(cmd, argv);
-        if (!argv[0]) continue;
-
-        // 内置命令 cd  
-        if (strcmp(argv[0], "cd") == 0) {
-            char *target = argv[1];
-            if (!target || strcmp(target, "~") == 0) target = getenv("HOME");
-            else if (strcmp(target, "-") == 0) target = pre;
-
-            char current[MAX_PATH];
-            getcwd(current, sizeof(current));
-            if (chdir(target) != 0) perror("cd failed");
-            else strcpy(pre, current);
+        if(strncmp(cmd, "cd", 2) == 0) {        // cd
+            char* dir = ini(cmd+2);
+            if(strlen(dir) == 0 || strcmp(dir, "~") == 0) dir = getenv("HOME");
+            else if(strcmp(dir, "-") == 0) {
+                char tmp[1024];
+                strcpy(tmp, prev_dir);
+                getcwd(prev_dir, sizeof(prev_dir));
+                dir = tmp;
+            } else { getcwd(prev_dir, sizeof(prev_dir)); }
+            if(chdir(dir) != 0) perror("cd failed");
             continue;
         }
 
-        // 检查后台运行 &  
-        int background = check_bg(argv);
+        if(strcmp(cmd, "exit") == 0) break;
 
-        // 处理管道 
-        int upipe = -1;
-        for (int i = 0; argv[i]; i++) if (strcmp(argv[i], "|") == 0) upipe = i;
-
-        if (upipe != -1) {
-            // 分割命令
-            argv[upipe] = NULL;
-            char **argv1 = argv;
-            char **argv2 = argv + upipe + 1;
-
-            int fd[2];
-            if (pipe(fd) < 0) { perror("pipe failed"); continue; }
-
-            pid_t pid1 = fork();
-            if (pid1 == 0) {
-                dup2(fd[1], STDOUT_FILENO);
-                close(fd[0]); close(fd[1]);
-                if (lmn(argv1) < 0) exit(1);
-                execvp(argv1[0], argv1);
-                perror("exec failed"); exit(1);
-            }
-
-            pid_t pid2 = fork();
-            if (pid2 == 0) {
-                dup2(fd[0], STDIN_FILENO);
-                close(fd[0]); close(fd[1]);
-                if (lmn(argv2) < 0) exit(1);
-                execvp(argv2[0], argv2);
-                perror("exec failed"); exit(1);
-            }
-
-            close(fd[0]); close(fd[1]);
-            if (!background) { waitpid(pid1, NULL, 0); waitpid(pid2, NULL, 0); }
-            continue;
+        if(strchr(cmd, '|')) {
+            run_pipe(cmd);
+        } else {
+            char* params[MAX_ARG];
+            bcd(cmd, params); 
+            redir(params);
         }
-
-        // 命令 
-        pid_t pid = fork();
-        if (pid == 0) {
-            signal(SIGINT, SIG_DFL); 
-            if (lmn(argv) < 0) exit(1);
-            execvp(argv[0], argv);
-            perror("exec failed");
-            exit(1);
-        } else if (pid > 0) {
-            if (!background) waitpid(pid, NULL, 0);
-            else printf("[后台] pid=%d\n", pid);
-        } else perror("fork failed");
     }
-
     return 0;
 }
